@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta charset="UTF-8" />
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script type="text/javascript">
+        function renderNewsItem(item) {
+            var repr = $('<tr><td></td><td><a></a><div></div></td></tr>');
+            $('td:first', repr).text(item.time);
+            $('a', repr).text(item.title);
+            $('a', repr).attr('href', item.url);
+            $('div', repr).text(item.summary);
+            return repr;
+        }
+        
+        function updateNewsList(item) {
+            var matches = /\/news\/(.*?)\/$/.exec(item.url)
+            var id = matches[1].replace(/\//g, '_');
+            if (!$('#' + id).length) {
+                var renderedItem = renderNewsItem(item);
+                renderedItem.attr('id', id);
+                $('#news tbody').prepend(renderedItem);
+            }
+        }
+        
+        function fetchNews() {
+            $.getJSON('/news/', function(news) {
+                $.each(news, function(index, item) {
+                    updateNewsList(item);
+                });
+                
+                setTimeout(fetchNews, 10000)
+            })
+        }
+        
+        $(document).ready(fetchNews);
+    </script>
+</head>
+<body>
+    <table id="news" align="center" width="1000" border="2">
+        <thead>
+            <th width="100">Time</th>
+            <th>News</th>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</body>
+</html>
