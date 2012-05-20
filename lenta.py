@@ -2,9 +2,10 @@
 
 import json
 import time
+import random
 import mechanize
 import feedparser
-from bottle import request, route, run, static_file
+from bottle import request, get, post, route, run, static_file
 
 from users import users
 
@@ -58,4 +59,19 @@ def news():
     
     return json.dumps(output)
 
-run(host='localhost', port=8080)
+@post('/comment/')
+def comment():
+    client = random.choice(clients)
+    return ''
+
+if __name__ == "__main__":
+    clients = []
+    for user in users:
+        client = LentaClient()
+        client.login(*user)
+        if client.logged_in:
+            clients.append(client)
+        else:
+            print "User %s is no longer valid" % user[0]
+    
+    run(host='localhost', port=8080)

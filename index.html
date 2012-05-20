@@ -3,14 +3,35 @@
 <head>
     <title></title>
     <meta charset="UTF-8" />
+    <style>
+        .item {
+            cursor: pointer;
+        }
+        input[type=text] {
+            display: none;
+            width: 890px;
+        }
+    </style>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
     <script type="text/javascript">
         function renderNewsItem(item) {
-            var repr = $('<tr><td></td><td><a></a><div></div></td></tr>');
+            var repr = $('<tr><td></td><td><a></a><div class="item"></div><input type="text"/></td></tr>');
             $('td:first', repr).text(item.time);
             $('a', repr).text(item.title);
             $('a', repr).attr('href', item.url);
-            $('div', repr).text(item.summary);
+            $('.item', repr).text(item.summary);
+            $('.item', repr).click(function() {
+                $(this).siblings('input').show();
+            });
+            $('input', repr).keydown(function(event){
+                if (event.which == 13) {
+                    var input = $(this);
+                    input.attr('disabled', true);
+                    $.post('/comment/', function(data) {
+                        input.attr('disabled', false);
+                    });
+                }
+            });
             return repr;
         }
         
@@ -20,6 +41,7 @@
             if (!$('#' + id).length) {
                 var renderedItem = renderNewsItem(item);
                 renderedItem.attr('id', id);
+                renderedItem.attr('rel', item.url);
                 $('#news tbody').prepend(renderedItem);
             }
         }
