@@ -1,0 +1,12 @@
+.item {
+    cursor: pointer;
+}
+
+input[type=text] {
+    display: none;
+    width: 810px;
+}
+
+.posting {
+    display: none;
+}
