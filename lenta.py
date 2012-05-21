@@ -38,13 +38,16 @@ class LentaClient(object):
         result = json.loads(response.read(), encoding='windows-1251')
         return result
 
-# result['comment_id'] result['status'] == 'ok'
+    def count_comments(self, news_id):
+        url = 'http://readers.lenta.ru/news/%s/' % news_id
+        self.browser.open(url)
+        return len([url for url in self.browser.links(url_regex=r'\./\?thread_id=\d+')])
 
 @route('/')
 def index():
     return static_file('index.html', root='')
 
-@route('/static/:file')
+@route('/static/<file>')
 def static(file):
     return static_file(file, root='')
 
@@ -72,6 +75,11 @@ def comment():
         request.forms.get('parent_id', 0)
     )
     return json.dumps(result)
+
+@route('/count_comments/<news_id:re:[a-z\d\/]+>')
+def comment(news_id):
+    client = random.choice(clients)
+    return str(client.count_comments(news_id))
 
 if __name__ == "__main__":
     clients = []

@@ -10,7 +10,7 @@
 
         input[type=text] {
             display: none;
-            width: 890px;
+            width: 810px;
         }
 
         .posting {
@@ -22,10 +22,9 @@
         function renderNewsItem(item) {
             var repr = $($('#template').html());
             $('td:first', repr).text(item.time);
-            $('a', repr).text(item.title);
-            $('a', repr).attr('href', item.url);
-            $('.item', repr).text(item.summary);
-            $('.item', repr).click(function() {
+            $('a.newslink', repr).text(item.title).attr('href', item.url);
+            $('a.commentslink', repr).attr('href', item.url.replace('lenta.ru', 'readers.lenta.ru'));
+            $('.item', repr).text(item.summary).click(function() {
                 $(this).siblings('input').toggle().focus();
             });
             $('input', repr).keydown(function(event) {
@@ -72,7 +71,11 @@
                 renderedItem.data('news_id', newsId);
                 if (!firstRun) {
                     renderedItem.css('background-color', 'yellow'); // highlight
+                    $.get('/count_comments/' + newsId, function(count) {
+                        $('a.commentslink', renderedItem).text(count);
+                    });
                 }
+
                 $('#news tbody').prepend(renderedItem);
                 return true;
             } else {
@@ -109,8 +112,9 @@
 <body>
     <table id="news" align="center" width="1000" border="2">
         <thead>
-            <th width="100">Time</th>
+            <th width="80">Time</th>
             <th>News</th>
+            <th width="80">Comments</th>
         </thead>
         <tbody>
         </tbody>
@@ -119,10 +123,13 @@
         <tr>
             <td></td>
             <td>
-                <a target="_blank"></a>
+                <a class="newslink" target="_blank"></a>
                 <div class="item"></div>
                 <input type="text" />
                 <div class="posting">posting...</div>
+            </td>
+            <td align="center">
+                <a class="commentslink" target="_blank">&gt;&gt;&gt;</a>
             </td>
         </tr>
     </script>
