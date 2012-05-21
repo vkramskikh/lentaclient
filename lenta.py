@@ -62,7 +62,12 @@ def news():
 @post('/comment/')
 def comment():
     client = random.choice(clients)
-    return ''
+    result = client.comment(
+        request.forms.get('news_id'),
+        request.forms.get('text'),
+        request.forms.get('parent_id', 0)
+    )
+    return json.dumps(result)
 
 if __name__ == "__main__":
     clients = []

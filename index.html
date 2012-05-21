@@ -7,28 +7,50 @@
         .item {
             cursor: pointer;
         }
+        
         input[type=text] {
             display: none;
             width: 890px;
+        }
+        
+        .posting {
+            display: none;
         }
     </style>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
     <script type="text/javascript">
         function renderNewsItem(item) {
-            var repr = $('<tr><td></td><td><a></a><div class="item"></div><input type="text"/></td></tr>');
+            var repr = $($('#template').html());
             $('td:first', repr).text(item.time);
             $('a', repr).text(item.title);
             $('a', repr).attr('href', item.url);
             $('.item', repr).text(item.summary);
             $('.item', repr).click(function() {
-                $(this).siblings('input').show();
+                $(this).siblings('input').toggle().focus();
             });
-            $('input', repr).keydown(function(event){
+            $('input', repr).keydown(function(event) {
                 if (event.which == 13) {
                     var input = $(this);
-                    input.attr('disabled', true);
-                    $.post('/comment/', function(data) {
-                        input.attr('disabled', false);
+                    var params = repr.data();
+                    
+                    if (params.posting) return;
+                    
+                    params.text = input.attr('value');
+                    input.attr('value', '');
+                    
+                    repr.data('posting', true);
+                    input.siblings('.posting').show();
+                    
+                    $.post('/comment/', params, function(data) {
+                        repr.data('posting', false);
+                        input.siblings('.posting').hide();
+                        
+                        var response = jQuery.parseJSON(data);
+                        if (response.status == 'ok') {
+                            repr.data('parent_id', response.comment_id);
+                        } else if (response.status == 'error') {
+                            alert(response.msg);
+                        }
                     });
                 }
             });
@@ -37,11 +59,12 @@
         
         function updateNewsList(item) {
             var matches = /\/news\/(.*?)\/$/.exec(item.url)
-            var id = matches[1].replace(/\//g, '_');
-            if (!$('#' + id).length) {
+            var newsId = matches[1];
+            var elId = newsId.replace(/\//g, '_');
+            if (!$('#' + elId).length) {
                 var renderedItem = renderNewsItem(item);
-                renderedItem.attr('id', id);
-                renderedItem.attr('rel', item.url);
+                renderedItem.attr('id', elId);
+                renderedItem.data('news_id', newsId);
                 $('#news tbody').prepend(renderedItem);
             }
         }
@@ -68,5 +91,16 @@
         <tbody>
         </tbody>
     </table>
+    <script type="text/template" id="template">
+        <tr>
+            <td></td>
+            <td>
+                <a></a>
+                <div class="item"></div>
+                <input type="text" />
+                <div class="posting">posting...</div>
+            </td>
+        </tr>
+    </script>
 </body>
 </html>
