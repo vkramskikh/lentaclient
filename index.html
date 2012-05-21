@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title></title>
+    <title>Lenta</title>
     <meta charset="UTF-8" />
     <style>
         .item {
             cursor: pointer;
         }
-        
+
         input[type=text] {
             display: none;
             width: 890px;
         }
-        
+
         .posting {
             display: none;
         }
@@ -32,53 +32,77 @@
                 if (event.which == 13) {
                     var input = $(this);
                     var params = repr.data();
-                    
+
                     if (params.posting) return;
-                    
+
                     params.text = input.attr('value');
                     input.attr('value', '');
-                    
+
                     repr.data('posting', true);
                     input.siblings('.posting').show();
-                    
+
                     $.post('/comment/', params, function(data) {
                         repr.data('posting', false);
                         input.siblings('.posting').hide();
-                        
+
                         var response = jQuery.parseJSON(data);
                         if (response.status == 'ok') {
                             repr.data('parent_id', response.comment_id);
                         } else if (response.status == 'error') {
                             alert(response.msg);
                         }
+                    }).error(function() {
+                        alert("Error while posting");
+                        repr.data('posting', false);
+                        input.siblings('.posting').hide();
                     });
                 }
             });
             return repr;
         }
-        
+
         function updateNewsList(item) {
             var matches = /\/news\/(.*?)\/$/.exec(item.url)
             var newsId = matches[1];
             var elId = newsId.replace(/\//g, '_');
-            if (!$('#' + elId).length) {
+            var el = $('#' + elId);
+            if (!el.length) {
                 var renderedItem = renderNewsItem(item);
                 renderedItem.attr('id', elId);
                 renderedItem.data('news_id', newsId);
+                if (!firstRun) {
+                    renderedItem.css('background-color', 'yellow'); // highlight
+                }
                 $('#news tbody').prepend(renderedItem);
+                return true;
+            } else {
+                el.css('background-color', 'white');
+                return false;
             }
         }
-        
+
         function fetchNews() {
             $.getJSON('/news/', function(news) {
+                var isUpdated = false;
                 $.each(news, function(index, item) {
-                    updateNewsList(item);
+                    isUpdated += updateNewsList(item);
                 });
-                
+
+                if (isUpdated) {
+                    if (firstRun) {
+                        firstRun = false;
+                    } else {
+                        snd.currentTime = 0;
+                        snd.play();
+                    }
+                }
+            }).complete(function() {
                 setTimeout(fetchNews, 10000)
             })
         }
-        
+
+        var firstRun = true;
+        var snd = new Audio('/static/notification.wav');
         $(document).ready(fetchNews);
     </script>
 </head>
