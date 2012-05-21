@@ -3,6 +3,7 @@
 import json
 import time
 import random
+import calendar
 import mechanize
 import feedparser
 from bottle import request, get, post, route, run, static_file
@@ -56,12 +57,11 @@ def news():
     feed = feedparser.parse('http://lenta.ru/rss/')
     items = feed['items']
     items.sort(key=lambda item: item['published_parsed'])
-
     output = map(lambda item: {
         'title': item['title'],
         'url': item['link'],
         'summary': item['summary'],
-        'time': time.strftime('%H:%M', item['published_parsed']),
+        'time': time.strftime('%H:%M', time.localtime(calendar.timegm(item['published_parsed']))),
     }, items)
 
     return json.dumps(output)
