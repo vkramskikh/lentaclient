@@ -4,8 +4,10 @@ import json
 import time
 import random
 import calendar
+import threading
 import mechanize
 import feedparser
+from BeautifulSoup import BeautifulSoup
 from bottle import request, get, post, route, run, static_file
 
 from users import users
@@ -42,7 +44,22 @@ class LentaClient(object):
     def count_comments(self, news_id):
         url = 'http://readers.lenta.ru/news/%s/' % news_id
         self.browser.open(url)
-        return len([url for url in self.browser.links(url_regex=r'\./\?thread_id=\d+')])
+        return len([link for link in self.browser.links(url_regex=r'\./\?thread_id=\d+')])
+
+    def get_news(self, category):
+        url = 'http://lenta.ru/%s/' % category
+        html = self.browser.open(url).read()
+        soup = BeautifulSoup(html, fromEncoding='windows-1251')
+        news_list = soup.find('td', {'class': 'razdel-news'})
+        first_news = news_list.find('div', {'class': 'news0'})
+        other_news = news_list.findAll('div', {'class': 'news1'})
+        return map(lambda item: {
+            'title': item.find(lambda tag: tag.name[0] == 'h').a.string,
+            'url': 'http://lenta.ru/%s/' % item.find('a')['href'],
+            'summary': item.find('p').string,
+            'time': time.strptime(item.find('div', {'class': 'dt'}).string, '%d.%m %H:%M'),
+        }, [first_news] + other_news)
+
 
 @route('/')
 def index():
@@ -52,8 +69,8 @@ def index():
 def static(file):
     return static_file(file, root='')
 
-@route('/news/')
-def news():
+@route('/news_rss/')
+def news_rss():
     feed = feedparser.parse('http://lenta.ru/rss/')
     items = feed['items']
     items.sort(key=lambda item: item['published_parsed'])
@@ -65,6 +82,36 @@ def news():
     }, items)
 
     return json.dumps(output)
+
+@route('/news/')
+def news():
+    class ParserThread(threading.Thread):
+        def __init__(self, category):
+            self.category = category
+            self.news = None
+            super(ParserThread, self).__init__()
+        def run(self):
+            client = LentaClient()
+            self.news = client.get_news(self.category)
+
+    threads = []
+    for category in ['politic', 'russia']:
+        thread = ParserThread(category)
+        thread.start()
+        threads.append(thread)
+
+    news = []
+    for thread in threads:
+        thread.join()
+        if thread.news:
+            news += thread.news
+
+    news.sort(key=lambda item: item['time'])
+
+    for item in news:
+        item['time'] = time.strftime('%d.%m %H:%M', time.gmtime(calendar.timegm(item['time']))),
+
+    return json.dumps(news)
 
 @post('/comment/')
 def comment():
