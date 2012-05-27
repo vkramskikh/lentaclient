@@ -3,10 +3,13 @@
 import json
 import time
 import random
+import httplib
 import calendar
 import threading
 import mechanize
 import feedparser
+from StringIO import StringIO
+from gzip import GzipFile
 from BeautifulSoup import BeautifulSoup
 from bottle import request, get, post, route, run, static_file
 
@@ -46,20 +49,6 @@ class LentaClient(object):
         self.browser.open(url)
         return len([link for link in self.browser.links(url_regex=r'\./\?thread_id=\d+')])
 
-    def get_news(self, category):
-        url = 'http://lenta.ru/%s/' % category
-        html = self.browser.open(url).read()
-        soup = BeautifulSoup(html, fromEncoding='windows-1251')
-        news_list = soup.find('td', {'class': 'razdel-news'})
-        first_news = news_list.find('div', {'class': 'news0'})
-        other_news = news_list.findAll('div', {'class': 'news1'})
-        return map(lambda item: {
-            'title': item.find(lambda tag: tag.name[0] == 'h').a.string,
-            'url': 'http://lenta.ru/%s/' % item.find('a')['href'],
-            'summary': item.find('p').string,
-            'time': time.strptime(item.find('div', {'class': 'dt'}).string, '%d.%m %H:%M'),
-        }, [first_news] + other_news)
-
 
 @route('/')
 def index():
@@ -90,9 +79,28 @@ def news():
             self.category = category
             self.news = None
             super(ParserThread, self).__init__()
+
         def run(self):
-            client = LentaClient()
-            self.news = client.get_news(self.category)
+            conn = httplib.HTTPConnection('lenta.ru')
+            conn.request('GET', '/%s/' % self.category, headers={'Accept-Encoding': 'gzip,deflate'})
+            response = conn.getresponse()
+            if response.getheader('Content-Encoding', '') == 'gzip':
+                html = GzipFile(fileobj=StringIO(response.read())).read()
+            else:
+                html = response.read()
+            conn.close()
+
+            soup = BeautifulSoup(html, fromEncoding='windows-1251')
+            news_list = soup.find('td', {'class': 'razdel-news'})
+            first_news = news_list.find('div', {'class': 'news0'})
+            other_news = news_list.findAll('div', {'class': 'news1'})
+
+            self.news = map(lambda item: {
+                'title': item.find(lambda tag: tag.name[0] == 'h').a.string,
+                'url': 'http://lenta.ru/%s/' % item.find('a')['href'],
+                'summary': item.find('p').string,
+                'time': time.strptime(item.find('div', {'class': 'dt'}).string, '%d.%m %H:%M'),
+            }, [first_news] + other_news)
 
     threads = []
     for category in ['politic', 'russia']:
