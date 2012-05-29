@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import sys
 import json
 import time
 import random
@@ -19,8 +20,9 @@ class LentaClient(object):
     def __init__(self):
         self.browser = mechanize.Browser()
         self.logged_in = False
+        self.user_id = None
 
-    def login(self, login, password):
+    def login(self, login, password, name):
         self.browser.open('http://id.lenta.ru/login/')
         self.browser.select_form(name='login')
         self.browser['login'] = login
@@ -28,6 +30,10 @@ class LentaClient(object):
         self.browser.submit()
         if self.browser.geturl() == 'http://id.lenta.ru/':
             self.logged_in = True
+            try:
+                self.user_id = list(self.browser.forms())[0].find_control('user_id').value
+            except:
+                pass
 
     def comment(self, news_id, text, parent_id=None):
         self.browser.open('http://readers.lenta.ru/news/%s/' % news_id)
@@ -97,7 +103,7 @@ def news():
 
             self.news = map(lambda item: {
                 'title': item.find(lambda tag: tag.name[0] == 'h').a.string,
-                'url': 'http://lenta.ru/%s/' % item.find('a')['href'],
+                'url': 'http://lenta.ru%s/' % item.find('a')['href'],
                 'summary': item.find('p').string,
                 'time': time.strptime(item.find('div', {'class': 'dt'}).string, '%d.%m %H:%M'),
             }, [first_news] + other_news)
@@ -143,7 +149,8 @@ if __name__ == "__main__":
         client.login(*user)
         if client.logged_in:
             clients.append(client)
+            sys.stdout.write('Logged in user %s: http://id.lenta.ru/profile/%s/\n' % (user[2], client.user_id))
         else:
-            print "User %s is no longer valid" % user[0]
+            sys.stdout.write('User %s with email %s is no longer valid\n' % (user[2], user[0]))
 
     run(host='localhost', port=8080)
